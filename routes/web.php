@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\SSO\SSOController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -14,43 +15,12 @@ use Illuminate\Support\Facades\Http;
 | contains the "web" middleware group. Now create something great!
 |
 */
+Route::get("/sso/login", [SSOController::class, 'getLogin'])->name("sso.login");
+Route::get("/callback", [SSOController::class, 'getCallback'])->name("sso.callback");
+Route::get("/sso/connect", [SSOController::class, 'connectUser'])->name("sso.connect");
 
-Route::get('/', function () {
-    return view('welcome');
-});
-Route::get("/login", function(Request $request) {
-    $request->session()->put("state", $state =  Str::random(40));
-    $query = http_build_query([
-        "client_id" => "92e180b3-a8e1-415c-9a2b-c8a4af6be76f",
-        "redirect_uri" => "http://127.0.0.1:8080/callback",
-        "response_type" => "code",
-        "scope" => "view-user ",
-        "state" => $state
-    ]);
-    return redirect("http://127.0.0.1:8000/oauth/authorize?" . $query);
-});
-Route::get("/callback", function (Request $request) {
-    $state = $request->session()->pull("state");
 
-    throw_unless(strlen($state) > 0 && $state == $request->state, InvalidArgumentException::class);
+Auth::routes(['register' => false, 'reset' => false ]);
 
-    $response = Http::asForm()->post(
-        "http://127.0.0.1:8000/oauth/token",
-        [
-        "grant_type" => "authorization_code",
-        "client_id" => "92e180b3-a8e1-415c-9a2b-c8a4af6be76f",
-        "client_secret" => "fY4TVEj1BmFfrq2w5cKzaGRcJkhcW4bSqiabz5ci",
-        "redirect_uri" => "http://127.0.0.1:8080/callback",
-        "code" => $request->code
-    ]);
-    $request->session()->put($response->json());
-    return redirect("/authuser");
-});
-Route::get("/authuser", function(Request $request) {
-    $access_token = $request->session()->get("access_token");
-    $response = Http::withHeaders([
-        "Accept" => "application/json",
-        "Authorization" => "Bearer " . $access_token
-    ])->get("http://127.0.0.1:8000/api/user");
-    return $response->json();
-});
+Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+Route::get('/', [App\Http\Controllers\HomeController::class, 'index'])->name('index');
