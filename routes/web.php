@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\Http;
 Route::get('/', function () {
     return view('welcome');
 });
-Route::get("/login", function(Request $request) {
+Route::get("/sso/login", function(Request $request) {
     $request->session()->put("state", $state =  Str::random(40));
     $query = http_build_query([
         "client_id" => "92e180b3-a8e1-415c-9a2b-c8a4af6be76f",
@@ -28,7 +29,9 @@ Route::get("/login", function(Request $request) {
         "state" => $state
     ]);
     return redirect("http://127.0.0.1:8000/oauth/authorize?" . $query);
-});
+})->name("sso.login");
+
+
 Route::get("/callback", function (Request $request) {
     $state = $request->session()->pull("state");
 
@@ -52,5 +55,23 @@ Route::get("/authuser", function(Request $request) {
         "Accept" => "application/json",
         "Authorization" => "Bearer " . $access_token
     ])->get("http://127.0.0.1:8000/api/user");
-    return $response->json();
+    $userObject = $response->json();
+    try {
+        $email = $userObject['email'];
+    } catch (\Throwable $th) {
+        return redirect(route("login"))->withError("Failed to get user information!");
+    }
+    $user = User::where("email", $email)->first();
+    if (!$user) {
+        $user = new User;
+        $user->name = $userObject['name'];
+        $user->email = $userObject['email'];
+        $user->email_verified_at = $userObject['email_verified_at'];
+        $user->save();
+    }
+    Auth::login($user);
+    return redirect(route("home"));
 });
+Auth::routes(['register' => false,  'reset' => false]);
+
+Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
