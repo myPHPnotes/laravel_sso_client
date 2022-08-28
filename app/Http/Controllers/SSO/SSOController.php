@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
+use InvalidArgumentException;
 
 class SSOController extends Controller
 {
@@ -19,7 +20,8 @@ class SSOController extends Controller
             "redirect_uri" => config("auth.callback") ,
             "response_type" => "code",
             "scope" => config("auth.scopes"),
-            "state" => $state
+            "state" => $state,
+            "prompt" => true
         ]);
         return redirect(config("auth.sso_host") .  "/oauth/authorize?" . $query);
     }
